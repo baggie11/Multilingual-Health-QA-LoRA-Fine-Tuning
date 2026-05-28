@@ -1,43 +1,51 @@
 # Multilingual Health QA (LoRA Fine-Tuning)
 
-This repository trains a multilingual health question-answering model using parameter-efficient fine-tuning (LoRA) on top of open base LLMs (via Unsloth).
+A reproducible training pipeline for multilingual health question answering using Unsloth, 4-bit quantization, and LoRA adapters.
 
-## Problem and Goal
+## Overview
 
-Healthcare Q&A systems are often weak in low-resource languages. This project adapts an African-language base model to answer health questions in target subsets (for example `Swa_Ken`) by fine-tuning on `(input -> output)` supervision.
+Healthcare QA quality is often weaker in low-resource languages. This project fine-tunes an African-language base model on language-specific subsets (for example `Swa_Ken`) using supervised instruction tuning from `(input -> output)` examples.
 
-## Approach Used
+## Key Features
 
-1. Subset-focused training: data is filtered by `subset` (example `Swa_Ken`) to specialize language behavior.
-2. Instruction tuning: every sample is converted to an Alpaca-style prompt (`Instruction`, `Input`, `Response`).
-3. LoRA fine-tuning: adapters are trained on attention + MLP projections only.
-4. 4-bit loading: base model is quantized for practical GPU memory usage.
-5. Step-wise validation: best checkpoint is selected using `eval_loss`.
+- Subset-specific training via `subset` filtering
+- Alpaca-style instruction formatting for SFT
+- Parameter-efficient LoRA fine-tuning
+- 4-bit model loading for lower GPU memory usage
+- Step-wise validation with best-checkpoint selection by `eval_loss`
 
-## Model and Training Defaults (Updated)
+## Approach
+
+1. Load `Train.csv` and `Val.csv`
+2. Filter rows by target `subset`
+3. Format each sample into instruction/input/response prompt text
+4. Build Hugging Face datasets
+5. Load base model in 4-bit
+6. Attach LoRA adapters to attention/MLP projection layers
+7. Train with `trl.SFTTrainer`
+8. Save LoRA adapter and tokenizer
+
+## Default Training Configuration
 
 - Base model: `vutuka/Llama-3.1-8B-african-aya`
 - Sequence length: `1024`
-- LoRA rank: `16`
-- LoRA alpha: `16`
-- LoRA dropout: `0.0`
+- LoRA rank/alpha/dropout: `16 / 16 / 0.0`
 - Epochs: `2`
 - Per-device train batch size: `2`
-- Gradient accumulation: `4`
-- Effective batch size: `8`
+- Gradient accumulation: `4` (effective batch size `8`)
 - Learning rate: `2e-4`
 - Optimizer: `adamw_8bit`
 - Scheduler: `cosine`
 
 ## Repository Structure
 
-- `src/mhqa/train.py`: training CLI and end-to-end training run
-- `src/mhqa/infer.py`: inference CLI for quick question answering
-- `src/mhqa/data.py`: data loading, filtering, and prompt formatting
-- `src/mhqa/config.py`: train defaults and language mapping
-- `scripts/train_swahili.sh`: convenience training command
-- `configs/train_swahili.example.yaml`: sample experiment settings
-- `data/`: place `Train.csv` and `Val.csv`
+- `src/mhqa/train.py`: training CLI
+- `src/mhqa/infer.py`: inference CLI
+- `src/mhqa/data.py`: data loading and prompt formatting
+- `src/mhqa/config.py`: default training config and language map
+- `scripts/train_swahili.sh`: example training command
+- `configs/train_swahili.example.yaml`: sample settings file
+- `data/`: dataset location (`Train.csv`, `Val.csv`)
 
 ## Setup
 
@@ -52,26 +60,26 @@ pip install --upgrade pip
 pip install -e .
 ```
 
-Colab compatibility install (matching your latest stack):
+Colab-compatible dependency pinning used in experiments:
 
 ```bash
 pip install --no-deps "xformers<0.0.27" "trl<0.9.0" peft accelerate bitsandbytes
 ```
 
-## Dataset Format
+## Dataset Requirements
 
 Expected CSV columns:
 
 - `input`: health question
-- `output`: expected answer
-- `subset`: language/country code (example `Swa_Ken`)
+- `output`: reference answer
+- `subset`: language/country code (example: `Swa_Ken`)
 
-Place files at:
+Place files in:
 
 - `data/Train.csv`
 - `data/Val.csv`
 
-## Train
+## Training
 
 ```bash
 python -m mhqa.train \
@@ -83,10 +91,10 @@ python -m mhqa.train \
   --adapter-dir outputs/msrh_health_qa_swa_ken
 ```
 
-The training script also prints:
+Runtime diagnostics printed during training include:
 
-- sample counts for train/val
-- average and 95th percentile character lengths
+- train/validation sample counts
+- average and 95th-percentile text length
 - token length of first formatted sample
 
 ## Inference
@@ -100,27 +108,16 @@ python -m mhqa.infer \
 
 ## Outputs
 
-- Training artifacts/checkpoints: `outputs/msrh_health_qa_results`
-- Final LoRA adapter + tokenizer: `outputs/msrh_health_qa_swa_ken`
-
-## Limitations and Safety Notes
-
-- This is a research pipeline, not a clinical diagnosis system.
-- Model answers can still be wrong or unsafe; add human/clinical review before deployment.
+- Checkpoints/logs: `outputs/msrh_health_qa_results`
+- Final adapter/tokenizer: `outputs/msrh_health_qa_swa_ken`
 
 ## Practical Notes
 
-- This workflow was developed and validated on Google Colab free GPU settings using memory-efficient training choices (4-bit loading + LoRA).
-- The same pipeline can be easily extended to other dataset subsets (for example `Aka_Gha`, `Lug_Uga`, `Amh_Eth`, and English subsets) by changing `--subset`.
-- A strong next-step improvement is a Mixture-of-Experts (MoE) style architecture, where experts can specialize by language or medical topic while sharing a common backbone.
+- This workflow was developed and validated on Google Colab free GPU using memory-efficient settings (4-bit + LoRA).
+- It can be extended to other subsets (for example `Aka_Gha`, `Lug_Uga`, `Amh_Eth`, and English subsets) by changing `--subset`.
+- A strong future direction is a Mixture-of-Experts (MoE) architecture with language/topic-specialized experts.
 
-## Push to GitHub
+## Limitations and Safety
 
-```bash
-git init
-git add .
-git commit -m "Initial multilingual health QA training pipeline"
-git branch -M main
-git remote add origin <YOUR_GITHUB_REPO_URL>
-git push -u origin main
-```
+- This is a research pipeline, not a clinical diagnosis system.
+- Outputs may be incorrect or unsafe; human/clinical review is required before real-world use.
