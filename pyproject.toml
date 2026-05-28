@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multilingual-health-qa"
+version = "0.1.0"
+description = "Fine-tuning pipeline for multilingual health question answering with Unsloth + LoRA"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Your Name"}]
+dependencies = [
+  "pandas>=2.0",
+  "numpy>=1.26",
+  "torch>=2.2",
+  "datasets>=2.20",
+  "transformers>=4.44",
+  "trl<0.9.0",
+  "peft>=0.12.0",
+  "accelerate>=0.33.0",
+  "bitsandbytes>=0.43.0",
+  "xformers<0.0.27",
+  "unsloth>=2025.1.0",
+]
+
+[project.scripts]
+mhqa-train = "mhqa.train:main"
+mhqa-infer = "mhqa.infer:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

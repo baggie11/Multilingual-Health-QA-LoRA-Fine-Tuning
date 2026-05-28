@@ -1,0 +1,7 @@
+subset_code: Swa_Ken
+model_name: unsloth/Llama-3.2-1B
+max_seq_length: 1024
+num_train_epochs: 3
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 2
+learning_rate: 0.0002
